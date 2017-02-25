@@ -15,10 +15,7 @@
     "autoload": {
         "psr-4": {
             "Qintuap\\Scopes\\": "src/"
-        },
-        "files": [
-            "src/helpers/repos.php"
-        ]
+        }
     },
     "minimum-stability": "dev"
 }
