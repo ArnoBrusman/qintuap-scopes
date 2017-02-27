@@ -18,11 +18,20 @@ abstract class Scope implements EloquentScope {
      * Leave false to not cache.
      */
     var $cache_key = false;
+    var $cache_tags = [];
 
     public abstract function apply(Builder $query, Model $model);
     
     public function useCache() {
         return !$this->cache_key === false;
+    }
+    
+    public function getCacheKey() {
+        return $this->cache_key;
+    }
+    
+    public function getCacheTags() {
+        return $this->cache_tags;
     }
 
 }

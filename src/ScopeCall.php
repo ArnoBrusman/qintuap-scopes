@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Scope as EloquentScope;
 use Qintuap\Repositories\Repos;
-use Qintuap\Scopes\Contracts\IsCacheable;
+use Qintuap\CacheDecorators\Contracts\CacheableMethods;
+use Qintuap\CacheDecorators\Facades\CacheDecorator;
 
 /**
  * Scope class that uses an other callable method as the scope.
@@ -34,7 +35,6 @@ class ScopeCall extends Scope {
         $this->callable = $callable;
         $this->parameters = $arguments;
         $this->tags = $cache_tags;
-        $this->cache_key = $this->makeCacheKey($callable,$arguments);
     }
     
     public function apply(Builder $query, Model $model) {
@@ -42,31 +42,53 @@ class ScopeCall extends Scope {
         return call_user_func_array($this->callable,$parameters);
     }
     
-    protected function makeCacheKey($callable) {
+    public function useCache() {
+        $callable = $this->callable;
+        if((is_array($callable) && ($callable[0] instanceof HasCacheableMethods))
+                || $this->cache_key
+                || CacheDecorator::canDecorate($callable[0])) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    
+    public function getCacheKey() {
+        $callable = $this->callable;
 //        if(is_array($callable) && ($callable[0] instanceof Model || $callable[0] instanceof Repository)) {
-        if(is_array($callable) && ($callable[0] instanceof IsCacheable)) {
-
-            $this->cache_key = $callable[0]->makeCacheKey($callable[1], $this->parameters);
-            $this->tags = $callable[0]->makeCacheTags($callable[1], $this->parameters);
-            
-            $classRepo = Repos::make($callable[0]);
-            $method = $callable[1];
-            if(isset($classRepo->cache_tags) && key_exists($method, $classRepo->cache_tags)) {
-                $this->tags = array_merge($this->tags, $classRepo->cache_tags[$method]);
-            }
-            if(isset($classRepo->scopes_cache) && ($classRepo->scopes_cache === true || in_array($method, $classRepo->scopes_cache))) {
-                foreach ($this->parameters as &$parameter) {
-                    if($parameter instanceof Model) {
-                        $parameter = $parameter->getKey();
-                    }
-                }
-                $this->cache_key = md5(json_encode(array(
-                        $this->callable,
-                        $this->parameters
-                    )));
+        if(is_array($callable) && ($callable[0] instanceof CacheableMethods || CacheDecorator::canDecorate($callable[0])) ) {
+            if(CacheDecorator::canDecorate($callable[0])) {
+                $cachable = CacheDecorator::decorate();
             } else {
-                $this->cache_key = false;
+                $cachable = $callable[0];
             }
+            $cache_key = $cachable->makeMethodCacheKey($callable[1], $this->parameters);
+        } elseif(is_string($callable)) {
+            throw new Exception('string callable not yet supported');
+//            $this->cache_key = md5(json_encode(array(
+//                    $this->callable,
+//                    $this->parameters
+//                )));
+        } elseif(!$this->cache_key) {
+            \Debugbar::addMessage($callable, 'info');
+            throw new Exception('no valid callable given');
+        }
+        return $this->cache_key;
+    }
+    
+    public function getCacheTags() {
+        
+        $callable = $this->callable;
+        $tags = $this->cache_tags;
+//        if(is_array($callable) && ($callable[0] instanceof Model || $callable[0] instanceof Repository)) {
+        if(is_array($callable) && ($callable[0] instanceof CacheableMethods || CacheDecorator::canDecorate($callable[0])) ) {
+            if(CacheDecorator::canDecorate($callable[0])) {
+                $cachable = CacheDecorator::decorate();
+            } else {
+                $cachable = $callable[0];
+            }
+            $tags = array_merge($tags, $cachable->makeMethodCacheTags($callable[1], $this->parameters));
+            
         } elseif(is_string($callable)) {
             throw new Exception('string callable not yet supported');
 //            $this->cache_key = md5(json_encode(array(
@@ -77,6 +99,8 @@ class ScopeCall extends Scope {
             \Debugbar::addMessage($callable, 'info');
             throw new Exception('no valid callable given');
         }
-        return $this->cache_key;
+        \Debugbar::addMessage($tags, 'info');
+        return $tags;
     }
+    
 }
