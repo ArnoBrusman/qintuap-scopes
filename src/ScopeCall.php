@@ -44,7 +44,7 @@ class ScopeCall extends Scope {
     
     public function useCache() {
         $callable = $this->callable;
-        if((is_array($callable) && ($callable[0] instanceof HasCacheableMethods))
+        if((is_array($callable) && ($callable[0] instanceof CacheableMethods))
                 || $this->cache_key
                 || CacheDecorator::canDecorate($callable[0])) {
             return true;
@@ -56,9 +56,9 @@ class ScopeCall extends Scope {
     public function getCacheKey() {
         $callable = $this->callable;
 //        if(is_array($callable) && ($callable[0] instanceof Model || $callable[0] instanceof Repository)) {
-        if(is_array($callable) && ($callable[0] instanceof CacheableMethods || CacheDecorator::canDecorate($callable[0])) ) {
-            if(CacheDecorator::canDecorate($callable[0])) {
-                $cachable = CacheDecorator::decorate();
+        if(is_array($callable) && ($callable[0] instanceof CacheableMethods || $canDecorate = CacheDecorator::canDecorate($callable[0])) ) {
+            if($canDecorate) {
+                $cachable = CacheDecorator::decorate($callable[0]);
             } else {
                 $cachable = $callable[0];
             }
@@ -69,11 +69,13 @@ class ScopeCall extends Scope {
 //                    $this->callable,
 //                    $this->parameters
 //                )));
-        } elseif(!$this->cache_key) {
+        } elseif($this->cache_key) {
+            $cache_key = $this->cache_key;
+        } else {
             \Debugbar::addMessage($callable, 'info');
             throw new Exception('no valid callable given');
         }
-        return $this->cache_key;
+        return $cache_key;
     }
     
     public function getCacheTags() {
@@ -81,9 +83,9 @@ class ScopeCall extends Scope {
         $callable = $this->callable;
         $tags = $this->cache_tags;
 //        if(is_array($callable) && ($callable[0] instanceof Model || $callable[0] instanceof Repository)) {
-        if(is_array($callable) && ($callable[0] instanceof CacheableMethods || CacheDecorator::canDecorate($callable[0])) ) {
-            if(CacheDecorator::canDecorate($callable[0])) {
-                $cachable = CacheDecorator::decorate();
+        if(is_array($callable) && ($callable[0] instanceof CacheableMethods || $canDecorate = CacheDecorator::canDecorate($callable[0])) ) {
+            if($canDecorate) {
+                $cachable = CacheDecorator::decorate($callable[0]);
             } else {
                 $cachable = $callable[0];
             }
@@ -99,7 +101,6 @@ class ScopeCall extends Scope {
             \Debugbar::addMessage($callable, 'info');
             throw new Exception('no valid callable given');
         }
-        \Debugbar::addMessage($tags, 'info');
         return $tags;
     }
     
