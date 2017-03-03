@@ -33,5 +33,9 @@ abstract class Scope implements EloquentScope {
     public function getCacheTags() {
         return $this->cache_tags;
     }
+    
+    public function getName() {
+        return class_basename($this);
+    }
 
 }

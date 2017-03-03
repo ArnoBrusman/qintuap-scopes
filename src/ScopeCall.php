@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Scope as EloquentScope;
 use Qintuap\Repositories\Repos;
-use Qintuap\CacheDecorators\Contracts\CacheableMethods;
-use Qintuap\CacheDecorators\Facades\CacheDecorator;
+use Qintuap\CacheDecorators\Contracts\CacheableScopes;
+use Qintuap\CacheDecorators\Facades\DecoCache;
 
 /**
  * Scope class that uses an other callable method as the scope.
@@ -18,25 +18,27 @@ use Qintuap\CacheDecorators\Facades\CacheDecorator;
  */
 class ScopeCall extends Scope {
     
-    /**
-     * The unique cache key used to cache the results
-     */
-    var $cache_key = false;
     var $callable;
     var $parameters;
-    /**
-     * Tags that the results will be cached with
-     * @var array
-     */
-    var $cache_tags = [];
     
     public function __construct($callable, $arguments = [], $cache_tags = [])
     {
-        $this->callable = $callable;
+        $this->setCallable($callable);
         $this->parameters = $arguments;
         $this->tags = $cache_tags;
     }
     
+    protected function setCallable($callable) {
+        
+        if(is_array($callable) 
+                && !($callable[0] instanceof CacheableScopes) 
+                && DecoCache::canDecorate($callable[0])) {
+            $callable[0] = DecoCache::decorate($callable[0]);
+        }
+        $this->callable = $callable;
+    }
+
+
     public function apply(Builder $query, Model $model) {
         $parameters = array_merge([], [$query], $this->parameters);
         return call_user_func_array($this->callable,$parameters);
@@ -44,25 +46,19 @@ class ScopeCall extends Scope {
     
     public function useCache() {
         $callable = $this->callable;
-        if((is_array($callable) && ($callable[0] instanceof CacheableMethods))
-                || $this->cache_key
-                || CacheDecorator::canDecorate($callable[0])) {
-            return true;
+        
+        if(is_array($callable)) {
+            return $callable[0] instanceof CacheableScopes && $callable[0]
+                    ->useScopeCache($callable[1], $this->parameters);
         } else {
-            return false;
+            return $this->cache_key;
         }
     }
     
     public function getCacheKey() {
         $callable = $this->callable;
-//        if(is_array($callable) && ($callable[0] instanceof Model || $callable[0] instanceof Repository)) {
-        if(is_array($callable) && ($callable[0] instanceof CacheableMethods || $canDecorate = CacheDecorator::canDecorate($callable[0])) ) {
-            if($canDecorate) {
-                $cachable = CacheDecorator::decorate($callable[0]);
-            } else {
-                $cachable = $callable[0];
-            }
-            $cache_key = $cachable->makeMethodCacheKey($callable[1], $this->parameters);
+        if(is_array($callable) && ($callable[0] instanceof CacheableScopes) ) {
+            $cache_key = $callable[0]->makeScopeCacheKey($callable[1], $this->parameters);
         } elseif(is_string($callable)) {
             throw new Exception('string callable not yet supported');
 //            $this->cache_key = md5(json_encode(array(
@@ -83,14 +79,8 @@ class ScopeCall extends Scope {
         $callable = $this->callable;
         $tags = $this->cache_tags;
 //        if(is_array($callable) && ($callable[0] instanceof Model || $callable[0] instanceof Repository)) {
-        if(is_array($callable) && ($callable[0] instanceof CacheableMethods || $canDecorate = CacheDecorator::canDecorate($callable[0])) ) {
-            if($canDecorate) {
-                $cachable = CacheDecorator::decorate($callable[0]);
-            } else {
-                $cachable = $callable[0];
-            }
-            $tags = array_merge($tags, $cachable->makeMethodCacheTags($callable[1], $this->parameters));
-            
+        if(is_array($callable) && ($callable[0] instanceof CacheableScopes) ) {
+            $tags = array_merge($tags, $callable[0]->makeScopeCacheTags($callable[1], $this->parameters));
         } elseif(is_string($callable)) {
             throw new Exception('string callable not yet supported');
 //            $this->cache_key = md5(json_encode(array(
@@ -104,4 +94,13 @@ class ScopeCall extends Scope {
         return $tags;
     }
     
+    public function getName() {
+        if(is_array($this->callable)) {
+            return class_basename($this->callable[0]) .'::'.$this->callable[1];
+        } elseif(is_string($this->callable)) {
+            return $this->callable;
+        } else {
+            return '{anonymous}';
+        }
+    }
 }
