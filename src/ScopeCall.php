@@ -68,7 +68,7 @@ class ScopeCall extends Scope {
         } elseif($this->cache_key) {
             $cache_key = $this->cache_key;
         } else {
-            \Debugbar::addMessage($callable, 'info');
+            \Debugbar::addMessage($callable, 'warning');
             throw new Exception('no valid callable given');
         }
         return $cache_key;
@@ -88,7 +88,7 @@ class ScopeCall extends Scope {
 //                    $this->parameters
 //                )));
         } else {
-            \Debugbar::addMessage($callable, 'info');
+            \Debugbar::addMessage($callable, 'warning');
             throw new Exception('no valid callable given');
         }
         return $tags;
