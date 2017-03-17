@@ -27,4 +27,17 @@ trait HasRelationScopes {
             return $query->where($key, '=', $id);
         });
     }
+    public function scopeOrOfRelation($query, $relationName, $relation)
+    {
+        if($relation instanceof EloquentModel) {
+            $key = $relation->getQualifiedKeyName();
+            $id = $relation->getKey();
+        } else {
+            $key = $this->getRelationKeyName($relationName);
+            $id = $relation;
+        }
+        return $query->orWhereHas($relationName,function($query) use($key, $id) {
+            return $query->where($key, '=', $id);
+        });
+    }
 }
