@@ -8,6 +8,10 @@
 namespace Qintuap\Scopes\Traits;
 
 use Illuminate\Database\Eloquent\Model as EloquentModel;
+
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
+
 /**
  *
  * @author Premiums
@@ -17,15 +21,22 @@ trait HasRelationScopes {
     public function scopeOfRelation($query, $relationName, $relation)
     {
         if($relation instanceof EloquentModel) {
-            $key = $relation->getQualifiedKeyName();
             $id = $relation->getKey();
         } else {
-            $key = $this->getRelationKeyName($relationName);
             $id = $relation;
         }
-        return $query->whereHas($relationName,function($query) use($key, $id) {
-            return $query->where($key, '=', $id);
-        });
+        
+        $relationQuery = $this->$relationName();
+        
+        if($relationQuery instanceof BelongsTo) {
+            $foreignKey = $relationQuery->getForeignKey();
+            return $query->where($foreignKey, $id);
+        } else {
+            $key = $relationQuery->getRelated()->getQualifiedKeyName();
+            return $query->whereHas($relationName,function($query) use($key, $id) {
+                return $query->where($key, '=', $id);
+            });
+        }
     }
     public function scopeOrOfRelation($query, $relationName, $relation)
     {
