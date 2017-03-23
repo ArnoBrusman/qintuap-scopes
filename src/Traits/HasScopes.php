@@ -76,6 +76,8 @@ trait HasScopes  {
 
     function applyScopes($query = null)
     {
+        
+        
         if(is_null($query)) 
             $query = $this->newQuery();
         if($this->skipScopes === true)
