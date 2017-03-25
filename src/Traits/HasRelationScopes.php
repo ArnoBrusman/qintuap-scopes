@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
  */
 trait HasRelationScopes {
 
-    public function scopeOfRelation($query, $relationName, $relation)
+    public function scopeOfRelation($query, $relationName, $relation, \Closure $subscope = null)
     {
         if($relation instanceof EloquentModel) {
             $id = $relation->getKey();
@@ -28,13 +28,16 @@ trait HasRelationScopes {
         
         $relationQuery = $this->$relationName();
         
-        if($relationQuery instanceof BelongsTo) {
+        if(is_null($subscope) && $relationQuery instanceof BelongsTo) {
             $foreignKey = $relationQuery->getForeignKey();
             return $query->where($foreignKey, $id);
         } else {
             $key = $relationQuery->getRelated()->getQualifiedKeyName();
-            return $query->whereHas($relationName,function($query) use($key, $id) {
-                return $query->where($key, '=', $id);
+            return $query->whereHas($relationName,function($query) use($key, $id, $subscope) {
+                $query->where($key, '=', $id);
+                if(!is_null($subscope)) {
+                    $subscope($query);
+                }
             });
         }
     }
