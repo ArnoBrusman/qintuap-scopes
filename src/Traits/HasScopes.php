@@ -37,15 +37,15 @@ trait HasScopes  {
     public function pushScope($scope, Closure $implementation = null)
     {
         if (is_string($scope) && ! is_null($implementation)) {
-            $this->scopes[$scope] = $implementation;
+            $this->scopes[] = $implementation;
         } elseif ($scope instanceof Closure) {
-            $this->scopes[spl_object_hash($scope)] = $scope;
+            $this->scopes[] = $scope;
         } elseif ($scope instanceof Scope) {
-            $this->scopes[get_class($scope)] = $scope;
+            $this->scopes[] = $scope;
         } elseif (is_callable($scope) && is_array($scope)) {
-            $this->scopes[$scope[1]] = $scope;
+            $this->scopes[] = $scope;
         } else {
-            $this->scopes[$scope] = $scope;
+            $this->scopes[] = $scope;
         }
         
         return $this;
@@ -76,8 +76,6 @@ trait HasScopes  {
 
     function applyScopes($query = null)
     {
-        
-        
         if(is_null($query)) 
             $query = $this->newQuery();
         if($this->skipScopes === true)
