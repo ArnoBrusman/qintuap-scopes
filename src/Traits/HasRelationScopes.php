@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
  */
 trait HasRelationScopes {
 
-    public function scopeOfRelation($query, $relationName, $relation, \Closure $subscope = null)
+    public function scopeOfRelation($query, $relationName, $relation, \Closure $subscope = null, $or = false)
     {
         if($relation instanceof EloquentModel) {
             $id = $relation->getKey();
@@ -30,10 +30,12 @@ trait HasRelationScopes {
         
         if(is_null($subscope) && $relationQuery instanceof BelongsTo) {
             $foreignKey = $relationQuery->getForeignKey();
-            return $query->where($foreignKey, $id);
+            $where = $or ? 'orWhere' : 'where';
+            return $query->$where($foreignKey, $id);
         } else {
             $key = $relationQuery->getRelated()->getQualifiedKeyName();
-            return $query->whereHas($relationName,function($query) use($key, $id, $subscope) {
+            $whereHas = $or ? 'orWhereHas' : 'whereHas';
+            return $query->$whereHas($relationName,function($query) use($key, $id, $subscope) {
                 $query->where($key, '=', $id);
                 if(!is_null($subscope)) {
                     $subscope($query);
@@ -41,17 +43,8 @@ trait HasRelationScopes {
             });
         }
     }
-    public function scopeOrOfRelation($query, $relationName, $relation)
+    public function scopeOrOfRelation($query, $relationName, $relation,\Closure $subscope = null)
     {
-        if($relation instanceof EloquentModel) {
-            $key = $relation->getQualifiedKeyName();
-            $id = $relation->getKey();
-        } else {
-            $key = $this->getRelationKeyName($relationName);
-            $id = $relation;
-        }
-        return $query->orWhereHas($relationName,function($query) use($key, $id) {
-            return $query->where($key, '=', $id);
-        });
+        return $this->scopeOfRelation($query, $relationName, $relation, $subscope, true);
     }
 }
