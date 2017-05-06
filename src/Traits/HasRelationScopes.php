@@ -43,6 +43,7 @@ trait HasRelationScopes {
             });
         }
     }
+    
     public function scopeOrOfRelation($query, $relationName, $relation,\Closure $subscope = null)
     {
         return $this->scopeOfRelation($query, $relationName, $relation, $subscope, true);
