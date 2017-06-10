@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
 
 /**
- *
+ * Doesn't yet work with morphed relations
  * @author Premiums
  */
 trait HasRelationScopes {
